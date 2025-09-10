@@ -1,4 +1,5 @@
 #include <stdio.h>
+
 #include <string.h>
 #include <stdlib.h>
 #define CANT 100
@@ -17,3 +18,7 @@ typedef struct {
 
 
 void generarPersonaBancaria(t_persona* persona, int id);
+int insertarPersonaCSV(FILE* archivo, t_persona* persona);
+FILE* abrirPersonaCSV(const char* nombreArchivo);   
+int cerrarPersonaCSV(FILE* archivo);
+int obtenerUltimoID(const char* nombreArchivo); // o mientras se inserta se guarda ese id como ultimo? lo hice por las dudas

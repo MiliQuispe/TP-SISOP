@@ -34,3 +34,73 @@ void generarPersonaBancaria(t_persona* persona, int id) {
     strcpy(persona->apellido , apellidos[rand() % 100]);
     persona->fondo = (double)(rand() % 100000000); 
 }
+
+FILE* abrirPersonaCSV(const char* nombreArchivo) {
+    FILE* archivo = fopen(nombreArchivo, "r"); 
+    if (archivo == NULL) {
+  
+        archivo = fopen(nombreArchivo, "w+");
+        if (archivo == NULL) {
+            perror("Error al crear el archivo");
+            return NULL;
+        }
+
+        fprintf(archivo, "id,nroCuenta,dni,nombre,apellido,fondo\n");
+    } 
+    else {
+        fclose(archivo);
+        archivo = fopen(nombreArchivo, "r+"); 
+        if (archivo == NULL) {
+            return NULL;
+        }
+    }
+    return archivo;
+}
+
+int insertarPersonaCSV(FILE* archivo, t_persona* persona) {
+    if (archivo == NULL || persona == NULL) return -1;
+
+    fseek(archivo, 0, SEEK_END);
+
+
+    fprintf(archivo, "%d,%d,%d,%s,%s,%.2lf\n",
+            persona->id,
+            persona->nroCuenta,
+            persona->dni,
+            persona->nombre,
+            persona->apellido,
+            persona->fondo);
+
+    fflush(archivo); 
+    return 0; 
+}
+
+int cerrarPersonaCSV(FILE* archivo) {
+    if (archivo != NULL) {
+        fclose(archivo);
+        return 0; 
+    }
+    return -1; 
+}
+
+int obtenerUltimoID(const char* nombreArchivo) {
+    FILE* archivo = fopen(nombreArchivo, "r");
+    if (!archivo){
+        return 0; 
+    }
+
+    char linea[256];
+    int ultimoID = 0;
+
+   
+    fgets(linea, sizeof(linea), archivo);
+
+    while (fgets(linea, sizeof(linea), archivo)) {
+        int id;
+        sscanf(linea, "%d,", &id); 
+        ultimoID = id;
+    }
+
+    fclose(archivo);
+    return ultimoID;
+}
