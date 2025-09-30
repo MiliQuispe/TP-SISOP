@@ -30,7 +30,7 @@ typedef struct {
 
 int main(){
 
-    int procesos, registros;
+    int procesos, registros, auxid;
     int  i = 0;
     FILE *reg;
 
@@ -229,6 +229,7 @@ int main(){
 
                     sem_wait(semId);
                     *listos= *listos + 10;
+                    auxid= *listos;
                     sem_post(semId);
                     // Lo pongo abajo para darle algo de paralelismo
                     //funcion generar registro(10)
@@ -237,7 +238,7 @@ int main(){
 
                         sem_wait(buffer);
                         sem_wait(control);
-                        generarPersonaBancaria(persona, *listos - 10 + j + 1);
+                        generarPersonaBancaria(persona, auxid - 10 + j + 1);
                         sem_post(control);
                         sem_post(ocupado);
 
@@ -250,6 +251,7 @@ int main(){
                     sem_wait(semId);
                     //idMemoria= listos + (registros - listos);
                     *listos = *listos + (registros - *listos);
+                    auxid= *listos;
                     sem_post(semId);
 
                     //funcion generar registro(listos - registros)
@@ -257,7 +259,7 @@ int main(){
                     for(int j = 0; j < (registros - *listos); j++){
                         sem_wait(buffer);
                         sem_wait(control);
-                        generarPersonaBancaria(persona, *listos - (registros - *listos) + j + 1);
+                        generarPersonaBancaria(persona, auxid - (registros - auxid) + j + 1);
                         sem_post(control);
                         sem_post(ocupado);
                         
