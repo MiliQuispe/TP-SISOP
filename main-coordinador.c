@@ -6,35 +6,30 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <fcntl.h>
 #include <semaphore.h>
 #include <time.h>
 #include <errno.h>
 
-// --- CONSTANTES ---
-#define SHM_NAME "/shm_personas"
-#define SEM_BUFFER_NAME "/sem_buffer"
-#define SEM_MUTEX_NAME "/sem_mutex_id"
-#define FILENAME "personas.csv"
-#define BLOCK_SIZE 10 // Tamaño del bloque de IDs a solicitar
-
-typedef struct {
-    int id;
-    int dni;
-    int nroCuenta;
-    char nombre[30];
-    char apellido[30];
-    double fondos
-} t_persona;
+// --- CONSTANTES (nombres consistentes) ---
+#define SHM_PERSONA_NAME "/shm_persona"   // buffer compartido (1 t_persona)
+#define SHM_COUNTER_NAME "/shm_id_counter"// contador de IDs
+#define SEM_EMPTY_NAME   "/sem_empty"     // hay espacio en buffer (initial 1)
+#define SEM_FULL_NAME    "/sem_full"      // hay dato en buffer (initial 0)
+#define SEM_MUTEX_NAME   "/sem_mutex"     // mutex para buffer (initial 1)
+#define FILENAME         "personas.csv"
+#define BLOCK_SIZE       10               // bloque de IDs
 
 
 int main(){
 
-    int procesos, registros, auxid;
+    int procesos, registros, auxid, guardado=0;
     int  i = 0;
     FILE *reg;
 
     // Entrada de Datos
+    printf("Ingresar la cantidad de procesos generadores: ");
     if (scanf("%d", &procesos) != 1 || procesos <= 0) {
         fprintf(stderr, "Error: Cantidad de procesos generadores no válida.\n");
         return 1;
@@ -59,7 +54,7 @@ int main(){
     close(idMemoria)
     */
 
-    int idMemoria = shm_open(NombreMemoria,
+    int idMemoria = shm_open(SHM_PERSONA_NAME,
                             O_CREAT | O_RDWR,
                             0600);
     if (idMemoria == -1) {
@@ -69,7 +64,7 @@ int main(){
 
     if (ftruncate(idMemoria, sizeof(t_persona)) == -1) {
         perror("ftruncate(SHM_PERSONA)");
-        shm_unlink(NombreMemoria); // Limpieza
+        shm_unlink(SHM_PERSONA_NAME); // Limpieza
         return 1;
     }
 
@@ -81,19 +76,19 @@ int main(){
                                             0);
     if (persona == MAP_FAILED) {
         perror("mmap(SHM_PERSONA)");
-        shm_unlink(NombreMemoria); // Limpieza
+        shm_unlink(SHM_PERSONA_NAME); // Limpieza
         return 1;
     }
 
     close(idMemoria);
 
     // 1. Crear/Abrir SHM para el ID Counter
-    int idMemoriaID = shm_open(nombreId, O_CREAT | O_RDWR, 0600);
+    int idMemoriaID = shm_open( SHM_COUNTER_NAME , O_CREAT | O_RDWR, 0600);
     
     if (idMemoriaID == -1) {
         perror("shm_open(SHM_ID)");
         munmap(persona, sizeof(t_persona)); 
-        shm_unlink(NombreMemoria);
+        shm_unlink(SHM_PERSONA_NAME);
         return 1;
     }
 
@@ -101,9 +96,9 @@ int main(){
     // 2. Dimensionar la SHM para un entero (int)
     if (ftruncate(idMemoriaID, sizeof(int)) == -1) {
         perror("ftruncate(SHM_ID)");
-        shm_unlink(nombreId); 
+        shm_unlink(SHM_COUNTER_NAME); 
         munmap(persona, sizeof(t_persona));
-        shm_unlink(NombreMemoria);
+        shm_unlink(SHM_PERSONA_NAME);
         return 1;
     }
 
@@ -116,9 +111,9 @@ int main(){
 
     if (listos == MAP_FAILED) {
         perror("mmap(SHM_ID)");
-        shm_unlink(nombreId); 
+        shm_unlink(SHM_COUNTER_NAME); 
         munmap(persona, sizeof(t_persona));
-        shm_unlink(NombreMemoria);
+        shm_unlink(SHM_PERSONA_NAME);
         
         return 1;
     }
@@ -143,8 +138,9 @@ int main(){
 
             munmap(persona, sizeof(t_persona));
             munmap(listos, sizeof(int)); 
-            shm_unlink(NombreMemoria);
-            shm_unlink(nombreId); 
+
+            shm_unlink(SHM_COUNTER_NAME); 
+            shm_unlink(SHM_PERSONA_NAME);
             return 1; 
         }
 
@@ -157,8 +153,8 @@ int main(){
         perror("sem_open(ocupado)");
         munmap(persona, sizeof(t_persona));
         munmap(listos, sizeof(int)); 
-        shm_unlink(NombreMemoria);
-        shm_unlink(nombreId); 
+        shm_unlink(SHM_COUNTER_NAME); 
+        shm_unlink(SHM_PERSONA_NAME);
         sem_close(buffer);
         sem_unlink("buffer");
         return 1;
@@ -172,8 +168,8 @@ int main(){
         perror("sem_open(control)");
         munmap(persona, sizeof(t_persona));
         munmap(listos, sizeof(int)); 
-        shm_unlink(NombreMemoria);
-        shm_unlink(nombreId); 
+        shm_unlink(SHM_COUNTER_NAME); 
+        shm_unlink(SHM_PERSONA_NAME);
         sem_close(buffer);
         sem_unlink("buffer");
         sem_close(ocupado);
@@ -189,8 +185,8 @@ int main(){
         perror("sem_open(semId)");
         munmap(persona, sizeof(t_persona));
         munmap(listos, sizeof(int)); 
-        shm_unlink(NombreMemoria);
-        shm_unlink(nombreId); 
+        shm_unlink(SHM_COUNTER_NAME);
+        shm_unlink(SHM_PERSONA_NAME);
         sem_close(buffer);
         sem_unlink("buffer");
         sem_close(ocupado);
@@ -218,6 +214,18 @@ int main(){
 
         if(pid == -1){
             printf("Error en el fork");
+            sem_close(buffer);
+            sem_close(ocupado);
+            sem_close(control);
+            sem_close(semId);
+            sem_unlink("buffer");
+            sem_unlink("ocupado");
+            sem_unlink("control");
+            sem_unlink("semId");
+            munmap(persona, sizeof(t_persona));
+            munmap(listos, sizeof(int));
+            shm_unlink(SHM_PERSONA_NAME);
+            shm_unlink(SHM_COUNTER_NAME);
             exit(1);
         }
         else
@@ -286,12 +294,27 @@ int main(){
     reg = abrirPersonaCSV(FILENAME);
         if (reg == NULL) {
             return -1; // Error al abrir o crear el archivo
+            sem_close(buffer);
+            sem_close(ocupado);    
+            sem_close(control);
+            sem_close(semId);      
+
+            sem_unlink("buffer");
+            sem_unlink("ocupado"); 
+            sem_unlink("control");
+            sem_unlink("semId");   
+
+            munmap(persona, sizeof(t_persona));
+            munmap(listos, sizeof(int)); 
+            
+            shm_unlink(SHM_PERSONA_NAME);
+            shm_unlink(SHM_COUNTER_NAME);
         }
 
     if(pid != 0){
 
         // P(controlTotal) Para que no entre si ya llegamos al limite
-        while (listos < registros)
+        while (guardado < registros)
         {
             // NOTA: deberia enviar un puntero a la variable t_persona como parametreo a la funcion generadora
             // De momento deberia recibir 2 parametros, el puntero a la variable y la cantidad (10 o menos) REVISAR
@@ -303,7 +326,7 @@ int main(){
             insertarPersonaCSV(reg, persona);
             
             // fwrite(persona, sizeof(t_persona), 1, reg);
-
+            guardado++;
             sem_post(buffer);
 
             sem_post(control);
@@ -315,6 +338,23 @@ int main(){
     for (int k = 0; k < procesos; k++) {
         wait(NULL); 
     }
+
+     // Liberar recursos
+    sem_close(buffer);
+    sem_close(ocupado);  
+    sem_close(control);
+    sem_close(semId);  
+
+    sem_unlink("buffer");
+    sem_unlink("ocupado"); 
+    sem_unlink("control");
+    sem_unlink("semId");   
+
+    munmap(persona, sizeof(t_persona));
+    munmap(listos, sizeof(int)); 
+    shm_unlink(SHM_PERSONA_NAME);
+    shm_unlink(SHM_COUNTER_NAME);
+
 
     // Cerrar el archivo CSV
 
@@ -339,21 +379,7 @@ int main(){
     shm_unlink...
     */
 
-    // Liberar recursos
-    sem_close(buffer);
-    sem_close(ocupado);    // <--- AGREGADO
-    sem_close(control);
-    sem_close(semId);      // <--- AGREGADO
-
-    sem_unlink("buffer");
-    sem_unlink("ocupado"); // <--- AGREGADO (Usando el nombre que abriste)
-    sem_unlink("control");
-    sem_unlink("semId");   // <--- AGREGADO (Usando el nombre que abriste)
-
-    munmap(persona, sizeof(t_persona));
-    munmap(listos, sizeof(int)); // <--- AGREGADO para el SHM del ID
-    shm_unlink(NombreMemoria);
-    shm_unlink(nombreId); // <--- AGREGADO para el SHM del ID
+    printf("proceso terminado\n");
 
     return(0);
 
