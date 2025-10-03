@@ -24,7 +24,7 @@
 
 int main(){
 
-    int procesos, registros, auxid, guardado=0;
+    int procesos, registros, auxid, guardado=0, auxCantReg;
     int  i = 0;
     FILE *reg;
 
@@ -228,67 +228,74 @@ int main(){
             shm_unlink(SHM_COUNTER_NAME);
             exit(1);
         }
-        else
+        else{
+
+            
             if (pid == 0){
                 // Es el hijo
                 // y realiza la produccion
 
-                if((registros - *listos) >= 10){
+                while( *listos < registros){
 
-                    sem_wait(semId);
-                    *listos= *listos + 10;
-                    auxid= *listos;
-                    sem_post(semId);
-                    // Lo pongo abajo para darle algo de paralelismo
-                    //funcion generar registro(10)
+                    if((registros - *listos) >= 10){
 
-                    for(int j = 0; j < 10; j++){
+                        sem_wait(semId);
+                        *listos= *listos + 10;
+                        auxid= *listos;
+                        sem_post(semId);
+                        // Lo pongo abajo para darle algo de paralelismo
+                        //funcion generar registro(10)
 
-                        sem_wait(buffer);
-                        sem_wait(control);
-                        generarPersonaBancaria(persona, auxid - 10 + j + 1);
-                        sem_post(control);
-                        sem_post(ocupado);
+                        for(int j = 0; j < 10; j++){
 
-                        // insertarPersonaCSV(reg, persona); // No deberia escribir aca
+                            sem_wait(buffer);
+                            sem_wait(control);
+                            generarPersonaBancaria(persona, auxid - 10 + j + 1);
+                            sem_post(control);
+                            sem_post(ocupado);
+
+                            // insertarPersonaCSV(reg, persona); // No deberia escribir aca
+                        }
                     }
+                    
+                    else if ((registros - *listos) < 10 ){
+
+                        sem_wait(semId);
+                        //idMemoria= listos + (registros - listos);
+                        auxCantReg= registros - *listos;
+                        *listos = *listos + (registros - *listos);
+                        auxid= *listos;
+                        sem_post(semId);
+
+                        //funcion generar registro(listos - registros)
+
+                        for(int j = 0; j < (registros - auxCantReg); j++){
+                            sem_wait(buffer);
+                            sem_wait(control);
+                            generarPersonaBancaria(persona, auxid - (registros - auxid) + j + 1);
+                            sem_post(control);
+                            sem_post(ocupado);
+                        }
+
+                    }
+                    
+                    
                 }
                 
-                else if ((registros - *listos) < 10 && (registros - *listos) > 0){
-
-                    sem_wait(semId);
-                    //idMemoria= listos + (registros - listos);
-                    *listos = *listos + (registros - *listos);
-                    auxid= *listos;
-                    sem_post(semId);
-
-                    //funcion generar registro(listos - registros)
-
-                    for(int j = 0; j < (registros - *listos); j++){
-                        sem_wait(buffer);
-                        sem_wait(control);
-                        generarPersonaBancaria(persona, auxid - (registros - auxid) + j + 1);
-                        sem_post(control);
-                        sem_post(ocupado);
-                        
-                        
-                        // insertarPersonaCSV(reg, persona); // No deberia escribir aca
-
-                    }
-
-                }
-
                 exit(0); // El hijo termina
-            }
+              }
+
             else{
                 // es el padre
                 pids[i] = pid;
                 // consume desde aca la memoria compartida
                 // y escribe en el archivo CSV
             } 
+        }
+            
     }
 
-    
+    //exit(0); // El hijo termina
 
     // Abro / Creo el archivo CSV
     reg = abrirPersonaCSV(FILENAME);
