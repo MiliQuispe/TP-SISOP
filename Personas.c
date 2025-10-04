@@ -27,6 +27,7 @@ void generarPersonaBancaria(t_persona* persona, int id) {
         "Olivera","Valdez","Chavez","Alonso","Salinas","Lemus","Ferreyra","Carrizo","Camposo","Villar"
     };
 
+
     persona->id = id;
     persona->nroCuenta = 1000 + id; 
     persona->dni = 10000000 + id;  

@@ -1,0 +1,22 @@
+Info de la IA:
+ipcs (NO FUNCIONARÁ PARA ESTE CÓDIGO - PERO ES IMPORTANTE ENTENDER POR QUÉ)
+Propósito de ipcs: Muestra información sobre los recursos de IPC System V.
+Tu código usa: IPC POSIX.
+Resultado esperado: No verás ninguna entrada para la memoria compartida o los semáforos de tu programa con ipcs -m o ipcs -s. 
+Esto es normal y esperado dado el tipo de IPC que estás usando.
+
+
+semáforos y memoria
+watch -n 1 'echo "--- Archivos IPC en /dev/shm ---"; ls -l /dev/shm'
+
+procesos de ese programa
+watch -n 1 "ps aux | grep main | grep -v grep"
+
+tabla de procesos
+top
+
+tabla de procesos mejorada
+htop
+
+stats
+vmstat 1
