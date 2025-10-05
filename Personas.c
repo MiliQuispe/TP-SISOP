@@ -37,24 +37,15 @@ void generarPersonaBancaria(t_persona* persona, int id) {
 }
 
 FILE* abrirPersonaCSV(const char* nombreArchivo) {
-    FILE* archivo = fopen(nombreArchivo, "r"); 
+    FILE* archivo = fopen(nombreArchivo, "w+"); 
+
     if (archivo == NULL) {
-  
-        archivo = fopen(nombreArchivo, "w+");
-        if (archivo == NULL) {
             perror("Error al crear el archivo");
             return NULL;
         }
-
         fprintf(archivo, "id,nroCuenta,dni,nombre,apellido,fondo\n");
-    } 
-    else {
-        fclose(archivo);
-        archivo = fopen(nombreArchivo, "r+"); 
-        if (archivo == NULL) {
-            return NULL;
-        }
-    }
+        fflush(archivo);
+
     return archivo;
 }
 

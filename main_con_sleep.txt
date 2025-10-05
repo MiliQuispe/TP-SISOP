@@ -193,29 +193,7 @@ int main()
         return 1;
     }
 
-    // Abro / Creo el archivo CSV
-    reg = abrirPersonaCSV(FILENAME);
-    if (reg == NULL)
-    {
-       
-        sem_close(buffer);
-        sem_close(ocupado);
-        sem_close(control);
-        sem_close(semId);
-
-        sem_unlink("buffer");
-        sem_unlink("ocupado");
-        sem_unlink("control");
-        sem_unlink("semId");
-
-        munmap(persona, sizeof(t_persona));
-        munmap(listos, sizeof(int));
-
-        shm_unlink(SHM_PERSONA_NAME);
-        shm_unlink(SHM_COUNTER_NAME);
-         return -1; // Error al abrir o crear el archivo
-    }
-
+    sleep(5);
 
     // un pid para cada proceso
     pid_t pids[procesos];
@@ -249,20 +227,23 @@ int main()
 
         if (pid == 0)
         {
+            sleep(2);
             break;
             // El proceso hijo sale del bucle para evitar crear procesos indeseados
         }
         else
         {
+            sleep(1); 
             // es el padre
             pids[i] = pid;
         }
     }
 
-    srand(time(NULL) ^ (getpid() << 16));
+
 
     if (pid == 0)
     {
+        srand(time(NULL) ^ (getpid() << 16));
 
         while (*listos < registros)
         {
@@ -276,6 +257,7 @@ int main()
                 sem_post(semId);
                 // Lo pongo abajo para darle algo de paralelismo
                 // funcion generar registro(10)
+                sleep(2);
 
                 for (int j = 1 ; j <= 10; j++)
                 {
@@ -285,6 +267,7 @@ int main()
                     generarPersonaBancaria(persona, auxid + j);
                     sem_post(control);
                     sem_post(ocupado);
+                    sleep(1);
 
                     // insertarPersonaCSV(reg, persona); // No deberia escribir aca
                 }
@@ -312,12 +295,29 @@ int main()
             }
         }
     }
-
-    if(pid == 0)
-        exit(0);   
-        
     // exit(0); // El hijo termina
 
+    // Abro / Creo el archivo CSV
+    reg = abrirPersonaCSV(FILENAME);
+    if (reg == NULL)
+    {
+        return -1; // Error al abrir o crear el archivo
+        sem_close(buffer);
+        sem_close(ocupado);
+        sem_close(control);
+        sem_close(semId);
+
+        sem_unlink("buffer");
+        sem_unlink("ocupado");
+        sem_unlink("control");
+        sem_unlink("semId");
+
+        munmap(persona, sizeof(t_persona));
+        munmap(listos, sizeof(int));
+
+        shm_unlink(SHM_PERSONA_NAME);
+        shm_unlink(SHM_COUNTER_NAME);
+    }
 
     if (pid != 0)
     {

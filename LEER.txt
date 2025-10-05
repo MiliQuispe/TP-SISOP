@@ -1,0 +1,44 @@
+Hay un txt con el main, solo que le puse varios sleep para poder ver el tema de los comandos
+Cualquier cosa lo cambiamos para la demostracion
+
+El Makefile ya esta
+como usarlo (todo en la terminal):
+compila todo (lo que huce yo, si se agregan archivos hay que editar le Makefile) = make
+qutiar los archivos compilados = make clean
+
+Script AWK (Criterios de corrección)
+se ejecuta en la terminal
+awk -f verificar_ids.awk personas.csv
+
+Info de la IA:
+ipcs (NO FUNCIONARÁ PARA ESTE CÓDIGO - PERO ES IMPORTANTE ENTENDER POR QUÉ)
+Propósito de ipcs: Muestra información sobre los recursos de IPC System V.
+Tu código usa: IPC POSIX.
+Resultado esperado: No verás ninguna entrada para la memoria compartida o los semáforos de tu programa con ipcs -m o ipcs -s. 
+Esto es normal y esperado dado el tipo de IPC que estás usando.
+
+
+semáforos y memoria
+watch -n 1 'echo "--- Archivos IPC en /dev/shm ---"; ls -l /dev/shm'
+
+procesos de ese programa
+watch -n 1 "ps aux | grep main | grep -v grep"
+
+tabla de procesos
+top
+
+tabla de procesos mejorada
+htop
+
+stats
+vmstat 1
+
+
+Creo que deberiamos cambiar el modo de apertura a w y borre todo en cada ejecucion
+porque si se ejecuta mas de 1 vez el programa el awk va a tirar error
+
+lo unico que quedaria seria ver eso, yo digo de abrir el csv siempre como escritura borrando todo
+y que antes de que comience a escribir los registros, ponga primero siempre la linea con el nombre de los campos
+(id,nroCuenta,dni,nombre,apellido,fondo) y despues empieza a escribir todos los registros
+
+ya me dio sueño, asi que cuando puedas miralo y decime que onda
